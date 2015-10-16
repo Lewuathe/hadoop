@@ -33,6 +33,14 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -178,6 +186,60 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     }
   }
 
+  /**
+   * DoubleCellBuffer uses double buffering. In the beginning, client writes
+   * data to the first buffer. When the first cell stripe is full, client
+   * continues writing to the second buffer. Now, the ParityGenerator will
+   * pick the first buffer and writes parity, then releases the first buffer
+   * so that when the second buffer is full, the client can continue writing
+   * to the first buffer again.
+   */
+
+  public class DoubleCellBuffer {
+    private CellBuffers bufCurrent;
+    private CellBuffers bufReady;
+
+    public DoubleCellBuffer(int numParityBlocks) throws InterruptedException {
+      bufCurrent = new CellBuffers(numParityBlocks);
+      bufReady = new CellBuffers(numParityBlocks);
+    }
+
+    public CellBuffers getCurrentBuf() {
+      return bufCurrent;
+    }
+
+    public CellBuffers getReadyBuf() {
+      return bufReady;
+    }
+
+    public int addTo(int index, byte[] bytes, int offset, int len) {
+      return bufCurrent.addTo(index, bytes, offset, len);
+    }
+
+    public void flipDataBuffers() {
+      bufCurrent.flipDataBuffers();
+    }
+
+    public void releaseAll() {
+      bufCurrent.release();
+      bufReady.release();
+    }
+
+    /**
+     * Swap current buffer and ready bufffer. Then clean current
+     * buffer for next cell.
+     * @return
+     * @throws InterruptedIOException
+     */
+    synchronized public CellBuffers flip() throws InterruptedIOException {
+      CellBuffers tmp = bufCurrent;
+      bufCurrent = bufReady;
+      bufCurrent.clear();
+      bufReady = tmp;
+      return tmp;
+    }
+  }
+
   /** Buffers for writing the data and parity cells of a stripe. */
   class CellBuffers {
     private final ByteBuffer[] buffers;
@@ -241,7 +303,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   }
 
   private final Coordinator coordinator;
-  private final CellBuffers cellBuffers;
+  private final DoubleCellBuffer doubleCellBuffer;
   private final RawErasureEncoder encoder;
   private final List<StripedDataStreamer> streamers;
   private final DFSPacket[] currentPackets; // current Packet of each streamer
@@ -250,6 +312,11 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   private final int cellSize;
   private final int numAllBlocks;
   private final int numDataBlocks;
+
+  private final ExecutorService executorService;
+  private final CompletionService<ByteBuffer[]> completionService;
+  private boolean submittedParityGenTask = false;
+
   private ExtendedBlock currentBlockGroup;
   private final String[] favoredNodes;
   private final List<StripedDataStreamer> failedStreamers;
@@ -277,7 +344,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
     coordinator = new Coordinator(numAllBlocks);
     try {
-      cellBuffers = new CellBuffers(numParityBlocks);
+      doubleCellBuffer = new DoubleCellBuffer(numParityBlocks);
     } catch (InterruptedException ie) {
       throw DFSUtilClient.toInterruptedIOException(
           "Failed to create cell buffers", ie);
@@ -292,6 +359,9 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     }
     currentPackets = new DFSPacket[streamers.size()];
     setCurrentStreamer(0);
+
+    executorService = Executors.newCachedThreadPool();
+    completionService = new ExecutorCompletionService(executorService);
   }
 
   StripedDataStreamer getStripedDataStreamer(int i) {
@@ -477,7 +547,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   protected synchronized void writeChunk(byte[] bytes, int offset, int len,
       byte[] checksum, int ckoff, int cklen) throws IOException {
     final int index = getCurrentIndex();
-    final int pos = cellBuffers.addTo(index, bytes, offset, len);
+    final int pos = doubleCellBuffer.addTo(index, bytes, offset, len);
     final boolean cellFull = pos == cellSize;
 
     if (currentBlockGroup == null || shouldEndBlockGroup()) {
@@ -505,7 +575,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
       //them and generate some parity cells. These cells will be
       //converted to packets and put to their DataStreamer's queue.
       if (next == numDataBlocks) {
-        cellBuffers.flipDataBuffers();
+        doubleCellBuffer.flipDataBuffers();
         writeParityCells();
         next = 0;
 
@@ -824,7 +894,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
     final long parityCellSize = lastStripeSize < cellSize?
         lastStripeSize : cellSize;
-    final ByteBuffer[] buffers = cellBuffers.getBuffers();
+    final ByteBuffer[] buffers = doubleCellBuffer.getCurrentBuf().getBuffers();
 
     for (int i = 0; i < numAllBlocks; i++) {
       // Pad zero bytes to make all cells exactly the size of parityCellSize
@@ -843,13 +913,34 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   }
 
   void writeParityCells() throws IOException {
-    final ByteBuffer[] buffers = cellBuffers.getBuffers();
-    //encode the data cells
-    encode(encoder, numDataBlocks, buffers);
-    for (int i = numDataBlocks; i < numAllBlocks; i++) {
-      writeParity(i, buffers[i], cellBuffers.getChecksumArray(i));
+    // At the first cell, the parity gen task has not been submitted yet.
+    // submittedParityGenTask is assumed to be false at the first cell.
+    if (submittedParityGenTask) {
+      try {
+        // Wait for parity gen task for previous cell.
+        Future<ByteBuffer[]> ret = completionService.take();
+        ByteBuffer[] encoded = ret.get();
+        for (int i = numDataBlocks; i < numAllBlocks; i++) {
+          writeParity(i, encoded[i], doubleCellBuffer.getReadyBuf().getChecksumArray(i));
+        }
+      } catch (InterruptedException e) {
+        throw DFSUtilClient.toInterruptedIOException("Caught InterruptedException: ", e);
+      } catch (ExecutionException e) {
+        throw new IOException("Caught ExecutionException", e);
+      }
     }
-    cellBuffers.clear();
+
+    // Swap double buffer. Current buffer is cleared in this method.
+    doubleCellBuffer.flip();
+    final ByteBuffer[] buffers = doubleCellBuffer.getReadyBuf().getBuffers();
+    completionService.submit(new Callable<ByteBuffer[]>() {
+      @Override
+      public ByteBuffer[] call() throws Exception {
+        encode(encoder, numDataBlocks, buffers);
+        return buffers;
+      }
+    });
+    submittedParityGenTask = true;
   }
 
   void writeParity(int index, ByteBuffer buffer, byte[] checksumBuf)
@@ -880,12 +971,13 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     for (int i = 0; i < numAllBlocks; i++) {
       getStripedDataStreamer(i).release();
     }
-    cellBuffers.release();
+    doubleCellBuffer.releaseAll();
   }
 
   @Override
   protected synchronized void closeImpl() throws IOException {
     if (isClosed()) {
+      executorService.shutdown();
       final MultipleIOException.Builder b = new MultipleIOException.Builder();
       for(int i = 0; i < streamers.size(); i++) {
         final StripedDataStreamer si = getStripedDataStreamer(i);
