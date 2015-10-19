@@ -179,8 +179,6 @@ Trunk (Unreleased)
     HDFS-8632. Add InterfaceAudience annotation to the erasure coding classes.
     (Rakesh R via wang)
 
-    HDFS-9205. Do not schedule corrupt blocks for replication.  (szetszwo)
-
   OPTIMIZATIONS
 
   BUG FIXES
@@ -850,6 +848,9 @@ Release 2.8.0 - UNRELEASED
     HDFS-8155. Support OAuth2 in WebHDFS. (jghoman)
 
   IMPROVEMENTS
+
+    HDFS-9257. improve error message for "Absolute path required" in INode.java
+    to contain the rejected path (Marcell Szabo via harsh)
 
     HDFS-2390. dfsadmin -setBalancerBandwidth does not validate -ve value
     (Gautam Gopalakrishnan via harsh)
@@ -1533,6 +1534,8 @@ Release 2.8.0 - UNRELEASED
 
     HDFS-9188. Make block corruption related tests FsDataset-agnostic. (lei)
 
+    HDFS-9205. Do not schedule corrupt blocks for replication.  (szetszwo)
+
   OPTIMIZATIONS
 
     HDFS-8026. Trace FSOutputSummer#writeChecksumChunks rather than
@@ -1564,6 +1567,8 @@ Release 2.8.0 - UNRELEASED
 
     HDFS-9167. Update pom.xml in other modules to depend on hdfs-client instead
     of hdfs. (Mingliang Liu via wheat9)
+
+    HDFS-9253. Refactor tests of libhdfs into a directory. (wheat9)
 
   BUG FIXES
 
@@ -2068,6 +2073,9 @@ Release 2.8.0 - UNRELEASED
 
     HDFS-9157. [OEV and OIV] : Unnecessary parsing for mandatory arguements if
     '-h' option is specified as the only option (nijel via vinayakumarb)
+
+    HDFS-9237. NPE at TestDataNodeVolumeFailureToleration#tearDown.
+    (Brahma Reddy Battula via ozawa)
 
 Release 2.7.2 - UNRELEASED
 

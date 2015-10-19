@@ -232,6 +232,9 @@ Release 2.8.0 - UNRELEASED
     YARN-3964. Support NodeLabelsProvider at Resource Manager side.
     (Dian Fu via devaraj)
 
+    YARN-2556. Tool to measure the performance of the timeline server (Chang Li
+    via sjlee)
+
   IMPROVEMENTS
 
     YARN-644. Basic null check is not performed on passed in arguments before
@@ -506,6 +509,12 @@ Release 2.8.0 - UNRELEASED
 
     YARN-4258. Add support for controlling capabilities for docker containers.
     (Sidharta Seethana via vvasudev)
+
+    YARN-4162. CapacityScheduler: Add resource usage by partition and queue capacity 
+    by partition to REST API. (Naganarasimha G R via wangda)
+
+    YARN-4170. AM need to be notified with priority in AllocateResponse.
+    (Sunil G via jianhe)
 
   OPTIMIZATIONS
 
@@ -947,6 +956,9 @@ Release 2.8.0 - UNRELEASED
 
     YARN-4000. RM crashes with NPE if leaf queue becomes parent queue during restart. 
     (Varun Saxena via jianhe)
+
+    YARN-4155. TestLogAggregationService.testLogAggregationServiceWithInterval failing
+    (Bibin A Chundatt via stevel)
 
 Release 2.7.2 - UNRELEASED
 

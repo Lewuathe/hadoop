@@ -894,6 +894,9 @@ Release 2.8.0 - UNRELEASED
     HADOOP-12481. JWTRedirectAuthenticationHandler doesn't Retain Original Query
     String (Larry McCay via cnauroth)
 
+    HADOOP-12460. Add overwrite option for 'get' shell command
+    (Jagadesh Kiran N via vinayakumarb)
+
   OPTIMIZATIONS
 
     HADOOP-11785. Reduce the number of listStatus operation in distcp
@@ -931,6 +934,9 @@ Release 2.8.0 - UNRELEASED
 
     HADOOP-11984. Enable parallel JUnit tests in pre-commit.
     (Chris Nauroth via vinayakumarb)
+
+    HADOOP-12450. UserGroupInformation should not log at WARN level if no groups
+    are found. (Elliott Clark via stevel)
 
   BUG FIXES
 
@@ -1233,6 +1239,15 @@ Release 2.8.0 - UNRELEASED
 
     HADOOP-12479. ProtocMojo does not log the reason for a protoc compilation
     failure. (cnauroth)
+
+    HADOOP-11628. SPNEGO auth does not work with CNAMEs in JDK8.
+    (Daryn Sharp via stevel).
+
+    HADOOP-10941. Proxy user verification NPEs if remote host is unresolvable.
+    (Benoy Antony via stevel).
+
+    HADOOP-12483. Maintain wrapped SASL ordering for postponed IPC responses.
+    (Daryn Sharp via yliu)
 
   OPTIMIZATIONS
 

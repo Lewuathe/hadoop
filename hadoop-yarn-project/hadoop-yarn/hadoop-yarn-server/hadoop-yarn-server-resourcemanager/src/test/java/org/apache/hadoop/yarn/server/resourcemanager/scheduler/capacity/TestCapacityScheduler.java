@@ -76,7 +76,6 @@ import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.factories.RecordFactory;
 import org.apache.hadoop.yarn.factory.providers.RecordFactoryProvider;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
-import org.apache.hadoop.yarn.nodelabels.RMNodeLabel;
 import org.apache.hadoop.yarn.server.api.protocolrecords.UpdateNodeResourceRequest;
 import org.apache.hadoop.yarn.server.resourcemanager.AdminService;
 import org.apache.hadoop.yarn.server.resourcemanager.Application;
@@ -977,16 +976,6 @@ public class TestCapacityScheduler {
       CapacityScheduler.schedule(cs);
     }
   }
-  
-  private MockAM launchAM(RMApp app, MockRM rm, MockNM nm)
-      throws Exception {
-    RMAppAttempt attempt = app.getCurrentAppAttempt();
-    nm.nodeHeartbeat(true);
-    MockAM am = rm.sendAMLaunched(attempt.getAppAttemptId());
-    am.registerAppAttempt();
-    rm.waitForState(app.getApplicationId(), RMAppState.RUNNING);
-    return am;
-  }
 
   private void waitForAppPreemptionInfo(RMApp app, Resource preempted,
       int numAMPreempted, int numTaskPreempted,
@@ -1157,7 +1146,8 @@ public class TestCapacityScheduler {
 
     // create app and launch the AM
     RMApp app0 = rm1.submitApp(CONTAINER_MEMORY);
-    MockAM am0 = launchAM(app0, rm1, nm1);
+    MockAM am0 = MockRM.launchAM(app0, rm1, nm1);
+    am0.registerAppAttempt();
 
     // get scheduler app
     FiCaSchedulerApp schedulerAppAttempt =
@@ -1191,7 +1181,9 @@ public class TestCapacityScheduler {
         Resource.newInstance(0, 0), false, 0);
 
     // launch app0-attempt1
-    MockAM am1 = launchAM(app0, rm1, nm1);
+    MockAM am1 = MockRM.launchAM(app0, rm1, nm1);
+    am1.registerAppAttempt();
+
     schedulerAppAttempt =
         cs.getSchedulerApplications().get(app0.getApplicationId())
             .getCurrentAppAttempt();
@@ -1778,8 +1770,7 @@ public class TestCapacityScheduler {
         (CapacityScheduler) resourceManager.getResourceScheduler();
     CSQueue origRootQ = cs.getRootQueue();
     CapacitySchedulerInfo oldInfo =
-        new CapacitySchedulerInfo(origRootQ, cs, new RMNodeLabel(
-            RMNodeLabelsManager.NO_LABEL));
+        new CapacitySchedulerInfo(origRootQ, cs);
     int origNumAppsA = getNumAppsInQueue("a", origRootQ.getChildQueues());
     int origNumAppsRoot = origRootQ.getNumApplications();
 
@@ -1789,8 +1780,7 @@ public class TestCapacityScheduler {
     int newNumAppsA = getNumAppsInQueue("a", newRootQ.getChildQueues());
     int newNumAppsRoot = newRootQ.getNumApplications();
     CapacitySchedulerInfo newInfo =
-        new CapacitySchedulerInfo(newRootQ, cs, new RMNodeLabel(
-            RMNodeLabelsManager.NO_LABEL));
+        new CapacitySchedulerInfo(newRootQ, cs);
     CapacitySchedulerLeafQueueInfo origOldA1 =
         (CapacitySchedulerLeafQueueInfo) getQueueInfo("a1", oldInfo.getQueues());
     CapacitySchedulerLeafQueueInfo origNewA1 =
