@@ -195,32 +195,32 @@ public class DFSStripedOutputStream extends DFSOutputStream {
    * to the first buffer again.
    */
 
-  public class DoubleCellBuffer {
+  final private class DoubleCellBuffer {
     private CellBuffers bufCurrent;
     private CellBuffers bufReady;
 
-    public DoubleCellBuffer(int numParityBlocks) throws InterruptedException {
+    private DoubleCellBuffer(int numParityBlocks) throws InterruptedException {
       bufCurrent = new CellBuffers(numParityBlocks);
       bufReady = new CellBuffers(numParityBlocks);
     }
 
-    public CellBuffers getCurrentBuf() {
+    private CellBuffers getCurrentBuf() {
       return bufCurrent;
     }
 
-    public CellBuffers getReadyBuf() {
+    private CellBuffers getReadyBuf() {
       return bufReady;
     }
 
-    public int addTo(int index, byte[] bytes, int offset, int len) {
+    private int addTo(int index, byte[] bytes, int offset, int len) {
       return bufCurrent.addTo(index, bytes, offset, len);
     }
 
-    public void flipDataBuffers() {
+    private void flipDataBuffers() {
       bufCurrent.flipDataBuffers();
     }
 
-    public void releaseAll() {
+    private void releaseAll() {
       bufCurrent.release();
       bufReady.release();
     }
@@ -231,7 +231,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
      * @return
      * @throws InterruptedIOException
      */
-    synchronized public CellBuffers flip() throws InterruptedIOException {
+    private CellBuffers flip() throws InterruptedIOException {
       CellBuffers tmp = bufCurrent;
       bufCurrent = bufReady;
       bufCurrent.clear();
@@ -302,6 +302,8 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     }
   }
 
+  private static final int PARITY_GEN_THREAD_NUM = 2;
+
   private final Coordinator coordinator;
   private final DoubleCellBuffer doubleCellBuffer;
   private final RawErasureEncoder encoder;
@@ -360,8 +362,8 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     currentPackets = new DFSPacket[streamers.size()];
     setCurrentStreamer(0);
 
-    executorService = Executors.newCachedThreadPool();
-    completionService = new ExecutorCompletionService(executorService);
+    executorService = Executors.newFixedThreadPool(PARITY_GEN_THREAD_NUM);
+    completionService = new ExecutorCompletionService<ByteBuffer[]>(executorService);
   }
 
   StripedDataStreamer getStripedDataStreamer(int i) {
@@ -921,10 +923,12 @@ public class DFSStripedOutputStream extends DFSOutputStream {
         Future<ByteBuffer[]> ret = completionService.take();
         ByteBuffer[] encoded = ret.get();
         for (int i = numDataBlocks; i < numAllBlocks; i++) {
-          writeParity(i, encoded[i], doubleCellBuffer.getReadyBuf().getChecksumArray(i));
+          writeParity(i, encoded[i], doubleCellBuffer.getReadyBuf()
+                  .getChecksumArray(i));
         }
       } catch (InterruptedException e) {
-        throw DFSUtilClient.toInterruptedIOException("Caught InterruptedException: ", e);
+        throw DFSUtilClient
+                .toInterruptedIOException("Caught InterruptedException: ", e);
       } catch (ExecutionException e) {
         throw new IOException("Caught ExecutionException", e);
       }
@@ -1000,6 +1004,22 @@ public class DFSStripedOutputStream extends DFSOutputStream {
       // if the last stripe is incomplete, generate and write parity cells
       if (generateParityCellsForLastStripe()) {
         writeParityCells();
+        try {
+          // Wait for parity gen task for the last cell.  writeParityCells
+          // generate task first. So it is necessary to take encoded parity
+          // here. There is only one parity at most here.
+          Future<ByteBuffer[]> ret = completionService.take();
+          ByteBuffer[] encoded = ret.get();
+          for (int i = numDataBlocks; i < numAllBlocks; i++) {
+            writeParity(i, encoded[i], doubleCellBuffer.getReadyBuf()
+                    .getChecksumArray(i));
+          }
+        } catch (InterruptedException e) {
+          throw DFSUtilClient
+                  .toInterruptedIOException("Caught InterruptedException: ", e);
+        } catch (ExecutionException e) {
+          throw new IOException("Caught ExecutionException", e);
+        }
       }
       enqueueAllCurrentPackets();
 
