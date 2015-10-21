@@ -195,7 +195,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
    * to the first buffer again.
    */
 
-  final private class DoubleCellBuffer {
+  private final class DoubleCellBuffer {
     private CellBuffers bufCurrent;
     private CellBuffers bufReady;
 
@@ -363,7 +363,8 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     setCurrentStreamer(0);
 
     executorService = Executors.newFixedThreadPool(PARITY_GEN_THREAD_NUM);
-    completionService = new ExecutorCompletionService<ByteBuffer[]>(executorService);
+    completionService
+      = new ExecutorCompletionService<ByteBuffer[]>(executorService);
   }
 
   StripedDataStreamer getStripedDataStreamer(int i) {
