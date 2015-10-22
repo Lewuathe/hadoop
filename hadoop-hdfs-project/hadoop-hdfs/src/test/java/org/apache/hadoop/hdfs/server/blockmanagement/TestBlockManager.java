@@ -100,6 +100,7 @@ public class TestBlockManager {
     fsn = Mockito.mock(FSNamesystem.class);
     Mockito.doReturn(true).when(fsn).hasWriteLock();
     Mockito.doReturn(true).when(fsn).hasReadLock();
+    Mockito.doReturn(true).when(fsn).isRunning();
     bm = new BlockManager(fsn, conf);
     final String[] racks = {
         "/rackA",
@@ -373,9 +374,8 @@ public class TestBlockManager {
       List<DatanodeDescriptor> origNodes)
       throws Exception {
     assertEquals(0, bm.numOfUnderReplicatedBlocks());
-    addBlockOnNodes(testIndex, origNodes);
-    bm.processMisReplicatedBlocks();
-    assertEquals(0, bm.numOfUnderReplicatedBlocks());
+    BlockInfo block = addBlockOnNodes(testIndex, origNodes);
+    assertFalse(bm.isNeededReplication(block, bm.countLiveNodes(block)));
   }
   
   
@@ -824,11 +824,11 @@ public class TestBlockManager {
     List<StorageType> excessTypes = new ArrayList<StorageType>();
 
     excessTypes.add(StorageType.DEFAULT);
-    Assert.assertTrue(BlockManager.useDelHint(true, delHint, null,
-        moreThan1Racks, excessTypes));
+    Assert.assertTrue(BlockPlacementPolicyDefault.useDelHint(true, delHint,
+        null, moreThan1Racks, excessTypes));
     excessTypes.remove(0);
     excessTypes.add(StorageType.SSD);
-    Assert.assertFalse(BlockManager.useDelHint(true, delHint, null,
-        moreThan1Racks, excessTypes));
+    Assert.assertFalse(BlockPlacementPolicyDefault.useDelHint(true, delHint,
+        null, moreThan1Racks, excessTypes));
   }
 }

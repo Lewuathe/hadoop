@@ -399,6 +399,9 @@ Release 2.8.0 - UNRELEASED
     MAPREDUCE-6479. Add missing mapred job command options in mapreduce
     document. (nijel via aajisaka)
 
+    MAPREDUCE-6489. Fail fast rogue tasks that write too much to local disk
+    (Maysam Yabandeh via jlowe)
+
   OPTIMIZATIONS
 
     MAPREDUCE-6376. Add avro binary support for jhist files (Ray Chiang via
@@ -645,6 +648,9 @@ Release 2.7.2 - UNRELEASED
 
     MAPREDUCE-6492. AsyncDispatcher exit with NPE on
     TaskAttemptImpl#sendJHStartEventForAssignedFailTask (Bibin A Chundatt via
+    jlowe)
+
+    MAPREDUCE-6518. Set SO_KEEPALIVE on shuffle connections (Chang Li via
     jlowe)
 
 Release 2.7.1 - 2015-07-06 
