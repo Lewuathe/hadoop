@@ -104,14 +104,14 @@ public class TestProportionalCapacityPreemptionPolicyForNodePartitions {
 
     conf = new CapacitySchedulerConfiguration(new Configuration(false));
     conf.setLong(
-        CapacitySchedulerConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL, 10000);
-    conf.setLong(CapacitySchedulerConfiguration.PREEMPTION_MONITORING_INTERVAL,
+        YarnConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL, 10000);
+    conf.setLong(YarnConfiguration.PREEMPTION_MONITORING_INTERVAL,
         3000);
     // report "ideal" preempt
-    conf.setFloat(CapacitySchedulerConfiguration.TOTAL_PREEMPTION_PER_ROUND,
+    conf.setFloat(YarnConfiguration.TOTAL_PREEMPTION_PER_ROUND,
         (float) 1.0);
     conf.setFloat(
-        CapacitySchedulerConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
+        YarnConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
         (float) 1.0);
 
     mClock = mock(Clock.class);

@@ -140,14 +140,14 @@ public class TestProportionalCapacityPreemptionPolicy {
   public void setup() {
     conf = new CapacitySchedulerConfiguration(new Configuration(false));
     conf.setLong(
-        CapacitySchedulerConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL, 10000);
-    conf.setLong(CapacitySchedulerConfiguration.PREEMPTION_MONITORING_INTERVAL,
+        YarnConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL, 10000);
+    conf.setLong(YarnConfiguration.PREEMPTION_MONITORING_INTERVAL,
         3000);
     // report "ideal" preempt
-    conf.setFloat(CapacitySchedulerConfiguration.TOTAL_PREEMPTION_PER_ROUND,
+    conf.setFloat(YarnConfiguration.TOTAL_PREEMPTION_PER_ROUND,
         1.0f);
     conf.setFloat(
-        CapacitySchedulerConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
+        YarnConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
         1.0f);
     conf.set(YarnConfiguration.RM_SCHEDULER_MONITOR_POLICIES,
         ProportionalCapacityPreemptionPolicy.class.getCanonicalName());
@@ -268,7 +268,7 @@ public class TestProportionalCapacityPreemptionPolicy {
       {   3,  0,  0,  0 },  // subqueues
     };
     conf.setLong(
-        CapacitySchedulerConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
+        YarnConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
         killTime);
     ProportionalCapacityPreemptionPolicy policy = buildPolicy(qData);
 
@@ -307,7 +307,7 @@ public class TestProportionalCapacityPreemptionPolicy {
       {   3,  0,  0,  0 },  // subqueues
     };
     conf.setFloat(
-        CapacitySchedulerConfiguration.PREEMPTION_MAX_IGNORED_OVER_CAPACITY,
+        YarnConfiguration.PREEMPTION_MAX_IGNORED_OVER_CAPACITY,
         (float) 0.1);
     ProportionalCapacityPreemptionPolicy policy = buildPolicy(qData);
     policy.editSchedule();
@@ -597,7 +597,7 @@ public class TestProportionalCapacityPreemptionPolicy {
       {   3,  0,  0,  0 },  // subqueues
     };
     conf.setFloat(
-        CapacitySchedulerConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
+        YarnConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
         (float) 0.1);
 
     ProportionalCapacityPreemptionPolicy policy = buildPolicy(qData);
@@ -619,7 +619,7 @@ public class TestProportionalCapacityPreemptionPolicy {
       {  -1,  1,  1,  0 },  // req granularity
       {   3,  0,  0,  0 },  // subqueues
     };
-    conf.setBoolean(CapacitySchedulerConfiguration.PREEMPTION_OBSERVE_ONLY,
+    conf.setBoolean(YarnConfiguration.PREEMPTION_OBSERVE_ONLY,
         true);
     when(mCS.getConfiguration()).thenReturn(
         new CapacitySchedulerConfiguration(conf));

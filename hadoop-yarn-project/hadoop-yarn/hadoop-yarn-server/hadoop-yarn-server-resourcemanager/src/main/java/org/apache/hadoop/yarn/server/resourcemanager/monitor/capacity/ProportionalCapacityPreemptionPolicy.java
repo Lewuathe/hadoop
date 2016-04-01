@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
 import org.apache.hadoop.yarn.server.resourcemanager.monitor.SchedulingEditPolicy;
@@ -143,28 +144,28 @@ public class ProportionalCapacityPreemptionPolicy
     CapacitySchedulerConfiguration csConfig = scheduler.getConfiguration();
 
     maxIgnoredOverCapacity = csConfig.getDouble(
-        CapacitySchedulerConfiguration.PREEMPTION_MAX_IGNORED_OVER_CAPACITY,
-        CapacitySchedulerConfiguration.DEFAULT_PREEMPTION_MAX_IGNORED_OVER_CAPACITY);
+        YarnConfiguration.PREEMPTION_MAX_IGNORED_OVER_CAPACITY,
+        YarnConfiguration.DEFAULT_PREEMPTION_MAX_IGNORED_OVER_CAPACITY);
 
     naturalTerminationFactor = csConfig.getDouble(
-        CapacitySchedulerConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
-        CapacitySchedulerConfiguration.DEFAULT_PREEMPTION_NATURAL_TERMINATION_FACTOR);
+        YarnConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
+        YarnConfiguration.DEFAULT_PREEMPTION_NATURAL_TERMINATION_FACTOR);
 
     maxWaitTime = csConfig.getLong(
-        CapacitySchedulerConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
-        CapacitySchedulerConfiguration.DEFAULT_PREEMPTION_WAIT_TIME_BEFORE_KILL);
+        YarnConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
+        YarnConfiguration.DEFAULT_PREEMPTION_WAIT_TIME_BEFORE_KILL);
 
     monitoringInterval = csConfig.getLong(
-        CapacitySchedulerConfiguration.PREEMPTION_MONITORING_INTERVAL,
-        CapacitySchedulerConfiguration.DEFAULT_PREEMPTION_MONITORING_INTERVAL);
+        YarnConfiguration.PREEMPTION_MONITORING_INTERVAL,
+        YarnConfiguration.DEFAULT_PREEMPTION_MONITORING_INTERVAL);
 
     percentageClusterPreemptionAllowed = csConfig.getFloat(
-        CapacitySchedulerConfiguration.TOTAL_PREEMPTION_PER_ROUND,
-        CapacitySchedulerConfiguration.DEFAULT_TOTAL_PREEMPTION_PER_ROUND);
+        YarnConfiguration.TOTAL_PREEMPTION_PER_ROUND,
+        YarnConfiguration.DEFAULT_TOTAL_PREEMPTION_PER_ROUND);
 
     observeOnly = csConfig.getBoolean(
-        CapacitySchedulerConfiguration.PREEMPTION_OBSERVE_ONLY,
-        CapacitySchedulerConfiguration.DEFAULT_PREEMPTION_OBSERVE_ONLY);
+        YarnConfiguration.PREEMPTION_OBSERVE_ONLY,
+        YarnConfiguration.DEFAULT_PREEMPTION_OBSERVE_ONLY);
 
     lazyPreempionEnabled = csConfig.getBoolean(
         CapacitySchedulerConfiguration.LAZY_PREEMPTION_ENALBED,

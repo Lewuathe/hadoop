@@ -82,14 +82,14 @@ public class TestCapacitySchedulerPreemption {
     conf = TestUtils.getConfigurationWithMultipleQueues(this.conf);
 
     // Set preemption related configurations
-    conf.setInt(CapacitySchedulerConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
+    conf.setInt(YarnConfiguration.PREEMPTION_WAIT_TIME_BEFORE_KILL,
         0);
     conf.setBoolean(CapacitySchedulerConfiguration.LAZY_PREEMPTION_ENALBED,
         true);
-    conf.setFloat(CapacitySchedulerConfiguration.TOTAL_PREEMPTION_PER_ROUND,
+    conf.setFloat(YarnConfiguration.TOTAL_PREEMPTION_PER_ROUND,
         1.0f);
     conf.setFloat(
-        CapacitySchedulerConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
+        YarnConfiguration.PREEMPTION_NATURAL_TERMINATION_FACTOR,
         1.0f);
     mgr = new NullRMNodeLabelsManager();
     mgr.init(this.conf);
