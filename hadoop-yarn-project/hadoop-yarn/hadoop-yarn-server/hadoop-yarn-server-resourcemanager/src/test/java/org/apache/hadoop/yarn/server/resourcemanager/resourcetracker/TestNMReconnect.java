@@ -23,8 +23,7 @@ import java.util.List;
 
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.event.DrainDispatcher;
-import org.apache.hadoop.yarn.server.resourcemanager.MockNM;
-import org.apache.hadoop.yarn.server.resourcemanager.MockRM;
+import org.apache.hadoop.yarn.server.resourcemanager.*;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNode;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.QueueMetrics;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.FairScheduler;
@@ -41,13 +40,8 @@ import org.apache.hadoop.yarn.event.InlineDispatcher;
 import org.apache.hadoop.yarn.factories.RecordFactory;
 import org.apache.hadoop.yarn.factory.providers.RecordFactoryProvider;
 import org.apache.hadoop.yarn.server.api.protocolrecords.RegisterNodeManagerRequest;
-import org.apache.hadoop.yarn.server.resourcemanager.NMLivelinessMonitor;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
-import org.apache.hadoop.yarn.server.resourcemanager.NodesListManager;
-import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
-import org.apache.hadoop.yarn.server.resourcemanager.RMContextImpl;
 import org.apache.hadoop.yarn.server.resourcemanager.ResourceManager.NodeEventDispatcher;
-import org.apache.hadoop.yarn.server.resourcemanager.ResourceTrackerService;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeEventType;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.AbstractYarnScheduler;
@@ -60,7 +54,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestNMReconnect {
+public class TestNMReconnect extends ParameterizedSchedulerTestBase {
   private static final RecordFactory recordFactory = 
       RecordFactoryProvider.getRecordFactory(null);
 
@@ -117,7 +111,6 @@ public class TestNMReconnect {
 
   @After
   public void tearDown() {
-    QueueMetrics.clearQueueMetrics();
     resourceTrackerService.stop();
   }
 
@@ -150,58 +143,15 @@ public class TestNMReconnect {
   }
 
   @Test
-  public void testCompareRMNodeAfterReconnectWithFairScheduler() throws Exception {
+  public void testCompareRMNodeAfterReconnect() throws Exception {
     Configuration yarnConf = new YarnConfiguration();
-    FairScheduler scheduler = new FairScheduler();
-    ConfigurationProvider configurationProvider =
-        ConfigurationProviderFactory.getConfigurationProvider(yarnConf);
-    configurationProvider.init(yarnConf);
-    context.setConfigurationProvider(configurationProvider);
-    RMNodeLabelsManager nlm = new RMNodeLabelsManager();
-    nlm.init(yarnConf);
-    nlm.start();
-    context.setNodeLabelManager(nlm);
-    scheduler.setRMContext(context);
-    scheduler.init(yarnConf);
-    scheduler.start();
-    dispatcher.register(SchedulerEventType.class, scheduler);
-
-    String hostname1 = "localhost1";
-    Resource capability = BuilderUtils.newResource(4096, 4);
-
-    RegisterNodeManagerRequest request1 = recordFactory
-        .newRecordInstance(RegisterNodeManagerRequest.class);
-    NodeId nodeId1 = NodeId.newInstance(hostname1, 0);
-    request1.setNodeId(nodeId1);
-    request1.setHttpPort(0);
-    request1.setResource(capability);
-    resourceTrackerService.registerNodeManager(request1);
-    Assert.assertNotNull(context.getRMNodes().get(nodeId1));
-    // verify Scheduler and RMContext use same RMNode reference.
-    Assert.assertTrue(scheduler.getSchedulerNode(nodeId1).getRMNode() ==
-        context.getRMNodes().get(nodeId1));
-    Assert.assertEquals(context.getRMNodes().get(nodeId1).
-        getTotalCapability(), capability);
-    Resource capability1 = BuilderUtils.newResource(2048, 2);
-    request1.setResource(capability1);
-    resourceTrackerService.registerNodeManager(request1);
-    Assert.assertNotNull(context.getRMNodes().get(nodeId1));
-    // verify Scheduler and RMContext use same RMNode reference
-    // after reconnect.
-    Assert.assertTrue(scheduler.getSchedulerNode(nodeId1).getRMNode() ==
-        context.getRMNodes().get(nodeId1));
-    // verify RMNode's capability is changed.
-    Assert.assertEquals(context.getRMNodes().get(nodeId1).
-        getTotalCapability(), capability1);
-    nlm.stop();
-    scheduler.stop();
-  }
-
-  @Test
-  public void testCompareRMNodeAfterReconnectWithCapacityScheduler() throws Exception {
-    Configuration yarnConf = new YarnConfiguration();
-    CapacityScheduler scheduler = new CapacityScheduler();
-    scheduler.setConf(yarnConf);
+    AbstractYarnScheduler scheduler = null;
+    if (getSchedulerType() == SchedulerType.FAIR) {
+      scheduler = new FairScheduler();
+    } else if (getSchedulerType() == SchedulerType.CAPACITY) {
+      scheduler = new CapacityScheduler();
+      ((CapacityScheduler)scheduler).setConf(yarnConf);
+    }
     ConfigurationProvider configurationProvider =
         ConfigurationProviderFactory.getConfigurationProvider(yarnConf);
     configurationProvider.init(yarnConf);
@@ -248,19 +198,6 @@ public class TestNMReconnect {
 
   @Test(timeout = 10000)
   public void testRMNodeStatusAfterReconnect() throws Exception {
-    // Setup queue initially to avoid contradiction with metrics system
-    Configuration yarnConf = new YarnConfiguration();
-    CapacityScheduler scheduler = new CapacityScheduler();
-    scheduler.setConf(yarnConf);
-    ConfigurationProvider configurationProvider =
-        ConfigurationProviderFactory.getConfigurationProvider(yarnConf);
-    configurationProvider.init(yarnConf);
-    context.setConfigurationProvider(configurationProvider);
-    RMNodeLabelsManager nlm = new RMNodeLabelsManager();
-    nlm.init(yarnConf);
-    context.setNodeLabelManager(nlm);
-    scheduler.setRMContext(context);
-    scheduler.init(yarnConf);
     // The node(127.0.0.1:1234) reconnected with RM. When it registered with
     // RM, RM set its lastNodeHeartbeatResponse's id to 0 asynchronously. But
     // the node's heartbeat come before RM succeeded setting the id to 0.
